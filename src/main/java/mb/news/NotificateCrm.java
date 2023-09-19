@@ -2,18 +2,22 @@ package mb.news;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.json.JSONObject;
 
-import com.google.gson.Gson;
+//import com.google.gson.Gson;
 
 
 public class NotificateCrm {
@@ -23,27 +27,30 @@ public class NotificateCrm {
 	final String URL_PRODUCTION = "https://crm-api.eb4us.com"; 	// production
 	private static String access_token = null, uuid = null;
 	private static JSONObject jsonObj = null; //  httpRequest
+	private static long expires_in = 0;
 	
 	public JSONObject getToken(String route, Map<String,Object> params, String authorization, String uuid) {
-/*
-{
-	"grant_type": "client_credentials",
-	"client_id": 2,
-	"scope": "*",
-	"client_secret": Ob8L4chWGQQSNyuLfDDrnf0huhJEiu6LkNJA7X3I 
-}
- */
-		jsonObj = postRequest(route, params, authorization, uuid);
+
+		jsonObj = postRequest(route, params, authorization, uuid, "token");
 		return jsonObj;
 	}
 	
-	public JSONObject sendNotificatication(String route, Map<String,Object> params, String token, String uuid) {
-		jsonObj = postRequest(route, params, token, uuid);
+	public JSONObject sendNotificatication(String route, Map<String,Object> params, String authorization, String uuid) {
+		
+		String resp = executePost(
+			"https://crm-api.builderall.info/api/v2/journey/event",
+			(new JSONObject(params)).toString(),
+			authorization, uuid
+		);
+	
+		System.out.println("Retorno de executePost() : " + resp);
+
+		jsonObj = new JSONObject(resp);
 
 		return jsonObj;
 	}
 
-	public JSONObject postRequest(String route, Map<String,Object> params, String authorization, String uuid) {
+	public JSONObject postRequest(String route, Map<String,Object> params, String authorization, String uuid, String type) {
 		jsonObj = null;
 		try {
 			URL apiURL = new URL(URL_HOMOLOG + route);
@@ -51,38 +58,32 @@ public class NotificateCrm {
 		    StringBuilder postData = new StringBuilder();
 	        for (Map.Entry<String,Object> param : params.entrySet()) {
 	            if (postData.length() != 0) postData.append('&');
-					postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
+				postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
 	            postData.append('=');
-				postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
+            	postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
 	        }
-	        //System.out.println("PostData: " + postData.toString());
 		    byte[] postDataBytes;
-				postDataBytes = postData.toString().getBytes("UTF-8");
+			postDataBytes = postData.toString().getBytes("UTF-8");
+
 		    HttpURLConnection conn = (HttpURLConnection) apiURL.openConnection();
 		    conn.setRequestMethod("POST");
-		    conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-		    conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
+	    	conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+			conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
 			conn.setRequestProperty("authorization", authorization);
 			conn.setRequestProperty("uuid", uuid);
-		    conn.setDoOutput(true);
-		    conn.getOutputStream().write(postDataBytes);
-		    BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-		    String line = "";
+			conn.setDoOutput(true);
+			conn.getOutputStream().write(postDataBytes);
+			BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			String line = "";
 			StringBuffer response = new StringBuffer("");
-		    boolean ret = false;
-		    while ((line = rd.readLine()) != null) {
-		    	 //System.out.println("Result: " + line);
-		    	 response.append(line);
-		    }
-		    rd.close();
-		    //System.out.println("Result: " + response);
+			while ((line = rd.readLine()) != null) {
+				response.append(line);
+			}
+			rd.close();
 			
 			jsonObj = new JSONObject(response.toString().trim());
-// just a example of response
-			//String response = "{\"token_type\":\"Bearer\",\"expires_in\":31622400,\"access_token\":\"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIyIiwianRpIjoiZTA2NGFhZTExYjI1OGQ1ZTRlNGY0NDNlYmJmM2NiZDUzNmFlMjAxOTE1MDMxODA1NTIxNjI5YWU3YTdlNzQ3ZGZhZDhlOGRiZmFhZTg0OWUiLCJpYXQiOjE2OTQ3MTI3NzIsIm5iZiI6MTY5NDcxMjc3MiwiZXhwIjoxNzI2MzM1MTcyLCJzdWIiOiIiLCJzY29wZXMiOlsiKiJdfQ.KGFJtt4BJ21TdIOnGgg83jz_X9TQ3nUAvazkDu8XrFGLhA3SenbXTXUgC8pelqUduBSAxBr9tmn80KOO8vJX6eLKdS35nXLD_Ng-CY6B6CZ4kzUMP_Q3b-b-74S38AOsPHIw1hbD6gnJJAOH-psHeHz6gCGRx5bdOixNk3-LMjpjccnI66WrKo3BwRjbxEXgTg-PNpX-WWokBx7VOJGqvBic2yx2GUZxOxIrWo_t-uxBVntPOQWZ9CwhbTlCXW5dV1fyGz9k8PYwzjUi6bKkkwyHH_nUWKDOHF5Jkw3P7zHMGvD6TWg07Ovb2Hl3dPGG9nXTTH4lCB5rPPmEzd6szYV2gpXnrBJq2VcRDxMYW--g-IPsjOqXTCTah8Dwgb0d8TwJSJqpCeuguB7sGNaqueaNSzE_aL6J80Qwcay9wBJv5ldtup6_ARjU6OKu86Z6va-hz2DyoLU9SPLYwL2_-Lsgo-5eweZsfb5j4WnSVRiChHMaVmbnLqxQX9GuJ2fjpMpYGzKoBMkLS5cx_6bZo8DZXGvGoHJXndgaIaNm8Oc2iNuVpCmYgBCmPkAAGFlKzWfURoML4s4q4PLDGJFlcKKs-HLA23i-YmAjaaxspM1HZOMN_77SEVP7ISU1kppCiPbRucYhNdOjh6kPNvHwytv3LfZ8hCSxhH1P6MkfINk\"}";
 
 		} catch (IOException e) {
-			//e.getLocalizedMessage();
 			e.printStackTrace();
 		}
 		return jsonObj;
@@ -98,7 +99,55 @@ public class NotificateCrm {
 
 	}
 	
+    public String executePost(String targetURL, String jsonInputString, String authorization, String uuid) {
+        HttpURLConnection connection = null;
+
+        try {
+            //Create connection
+            URL url = new URL(targetURL);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", 
+                "application/json");
+            
+            connection.setRequestProperty("uuid", uuid);
+            
+            connection.setRequestProperty("authorization", authorization);
+
+            connection.setRequestProperty("Content-Length", 
+                Integer.toString(jsonInputString.getBytes().length));
+            connection.setRequestProperty("Content-Language", "en-US");  
+
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);
+            
+            try(OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes("utf-8");
+                os.write(input, 0, input.length);			
+            }
+
+            //Get Response  
+            InputStream is = connection.getInputStream();
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is));
+            StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
+            String line;
+            while ((line = rd.readLine()) != null) {
+                response.append(line);
+                response.append('\r');
+            }
+            rd.close();
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (connection != null) {
+            connection.disconnect();
+            }
+        }
+    }
 	public static void main(String[] args) {
+
 		NotificateCrm notif = new NotificateCrm();
 		Map<String,Object> params = new LinkedHashMap<String, Object>();
 		params.put("grant_type", "client_credentials");
@@ -114,81 +163,68 @@ public class NotificateCrm {
 				if (keyStr.equals("access_token")) {
 					access_token = jsonObj.get(keyStr).toString();
 					//System.out.println("key: "+ keyStr + " value: " + access_token);
+				} else if (keyStr.equals("expires_in")) {
+					expires_in = Long.parseLong(jsonObj.get(keyStr).toString());
 				}
 			});
+			expires_in *= 1000;
+			Calendar c = Calendar.getInstance();
+			long actualMillis = c.getTimeInMillis();
+			System.out.println("Data atual: " + c.getTime() + " - miilis: " + actualMillis);
+			long expireMillis = actualMillis + expires_in;
+			Date expireDate = new Date(expireMillis); 
+			System.out.println("Date expiration: " + expireDate);
+			//long diffMillis = expireMillis - actualMillis;
+			//System.out.println("Falta para expirar: " + diffMillis);
+/*			
+			// verifying token expiration time
+			//try{Thread.sleep(15000);}catch(InterruptedException e){System.out.println(e);}    
+			Calendar c1 = Calendar.getInstance();
+			actualMillis = c1.getTimeInMillis();
+			System.out.println("Data atual: " + c1.getTime() + " - miilis: " + actualMillis);
+			diffMillis = expireMillis - c1.getTimeInMillis();
+			System.out.println("Falta para expirar: " + diffMillis);
+			if (diffMillis < 10000) {
+				// get token again
+			}
+*/
 			if (access_token != null) {
 				String uuid = "4d6a0d5b-4e32-4c85-b0a9-ede272040d58";
 
-				String pattern = "yyyy-MM-dd HH:mm:ss";
-				SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
-				String date = simpleDateFormat.format(new Date());
-				
+				SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-MM-dd HH:mm:ss" );
+				sdf.setTimeZone( TimeZone.getTimeZone( "UTC" ) );
+				String date = sdf.format( new Date() );
+				//System.out.println("Date UTC formatted: " + date );
+
 				params = new LinkedHashMap<String, Object>();
 	    		params.put("slug", "mailingboss_join_workflow");
 	    		params.put("name", "Test Adelcio");
 	    		params.put("type", "end_user");
 	    		params.put("performed_at", date); 
 
-				CrmExtra mapExtra = new CrmExtra("12345", "Hello World!");
-				Gson gson = new Gson();
-				String jsonStr = gson.toJson(mapExtra);			    
-				//System.out.println("mapExtra: ");
-			    //System.out.println(jsonStr);
-				params.put("extra", jsonStr);
+				Map<String,Object> paramExtra = new LinkedHashMap<String, Object>();
+				paramExtra.put("id", "12345");
+				paramExtra.put("subject", "Hello World!");
+				params.put("extra", paramExtra);
 				
-				CrmLead mapLead = new CrmLead("adelcio@mail.com", "Lead Adelcio");
-				jsonStr = gson.toJson(mapLead);
-				//System.out.println("mapLead: ");
-			    //System.out.println(jsonStr);
-				params.put("lead", jsonStr);
-				//System.out.println("Params: ");
-			    //System.out.println(params);
+				Map<String,Object> paramLead = new LinkedHashMap<String, Object>();
+				paramLead.put("email", "adelcio@mail.com");
+				paramLead.put("lead", "Lead Adelcio");
+				params.put("lead", paramLead);
+			    System.out.println("params: " + params);
 
 				jsonObj = notif.sendNotificatication("/api/v2/journey/event", params, "Bearer " + access_token, uuid);
 				if (jsonObj != null) {
 					notif.showKeyValueOfResponse(jsonObj);						
 				} else {
-					System.out.println("sendNotificatication() retorns NULL");
+					System.out.println("sendNotificatication() returns NULL");
 				}	
-							
+
 			} else {
-				System.out.println("Access_token retorns NULL");
+				System.out.println("Access_token returns NULL");
 			}
 		}
 
-	}
-
-}
-class CrmLead {
-	//mapLead.put("\"email\"", "\"adelcio@mail.com\"");
-	//mapLead.put("\"name\"", "\"Lead Adelcio\"");
-	String email;
-	String name;
-	
-	public CrmLead(String email, String name) {
-		this.email = email;
-		this.name = name;
-	}
-	
-}
-
-class CrmExtra {
-	//mapExtra.put("\"id\"", "\"12345\"");
-	//mapExtra.put("\"subject\"", "\"Hello World!\"");
-	String id;
-	String subject;
-	
-	public CrmExtra(String id, String subject) {
-		this.id = id;
-		this.subject = subject;
-	}
-	
-	public String getId() {
-		return id;
-	}
-
-	public String getSubject() {
-		return subject;
 	}
 
 }
