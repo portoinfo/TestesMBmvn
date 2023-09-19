@@ -113,74 +113,46 @@ public class NotificateCrm {
 			{
 				if (keyStr.equals("access_token")) {
 					access_token = jsonObj.get(keyStr).toString();
-					System.out.println("key: "+ keyStr + " value: " + access_token);
+					//System.out.println("key: "+ keyStr + " value: " + access_token);
 				}
 			});
 			if (access_token != null) {
-/*
-{
-	"slug": "mailingboss_join_workflow", // required | ex: `${tool_name}_${event}`
-	"name": "Test", // optional | Resoruce name: (ex: workflow name)
-	"type": "end_user", // required
-	"performed_at": "2023-09-08 12:39:20", // optional | (UTC)
-	"extra": { // optional | Extra attributes, you can send any data
-		"id": 15456, // Resource "id" is recommended
-		"subject": "Hey There!"
-	},
-	"lead": { // required
-		"email": "email@lead.com", // required
-		"name": "Lead One", // optional
-		// "taginternals": "TAG1,TAG2" // optional, *temporarily unavailable*
-		"phones": [
-			"+555499899999",
-			"5989999999"
-		]
-	}
-}
- */
 				String uuid = "4d6a0d5b-4e32-4c85-b0a9-ede272040d58";
 
 				String pattern = "yyyy-MM-dd HH:mm:ss";
 				SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
 				String date = simpleDateFormat.format(new Date());
-				System.out.println(date);
 				
 				params = new LinkedHashMap<String, Object>();
 	    		params.put("slug", "mailingboss_join_workflow");
 	    		params.put("name", "Test Adelcio");
 	    		params.put("type", "end_user");
-	    		params.put("performed_at", date); // "2023-09-18 15:32:35");
+	    		params.put("performed_at", date); 
 
-				//Map<String, Object> mapExtra = new LinkedHashMap<String, Object>();
-				//mapExtra.put("\"id\"", "\"12345\"");
-				//mapExtra.put("\"subject\"", "\"Hello World!\"");
 				CrmExtra mapExtra = new CrmExtra("12345", "Hello World!");
 				Gson gson = new Gson();
 				String jsonStr = gson.toJson(mapExtra);			    
-				System.out.println("mapExtra: ");
-			    System.out.println(jsonStr);
+				//System.out.println("mapExtra: ");
+			    //System.out.println(jsonStr);
 				params.put("extra", jsonStr);
-
-				//Map<String, Object> mapLead = new LinkedHashMap<String, Object>();
-				//mapLead.put("\"email\"", "\"adelcio@mail.com\"");
-				//mapLead.put("\"name\"", "\"Lead Adelcio\"");
+				
 				CrmLead mapLead = new CrmLead("adelcio@mail.com", "Lead Adelcio");
 				jsonStr = gson.toJson(mapLead);
-				System.out.println("mapLead: ");
-			    System.out.println(jsonStr);
+				//System.out.println("mapLead: ");
+			    //System.out.println(jsonStr);
 				params.put("lead", jsonStr);
-				System.out.println("Params: ");
-			    System.out.println(params);
+				//System.out.println("Params: ");
+			    //System.out.println(params);
 
 				jsonObj = notif.sendNotificatication("/api/v2/journey/event", params, "Bearer " + access_token, uuid);
 				if (jsonObj != null) {
 					notif.showKeyValueOfResponse(jsonObj);						
 				} else {
-					System.out.println("sendNotificatication() retornou NULL");
+					System.out.println("sendNotificatication() retorns NULL");
 				}	
 							
 			} else {
-				System.out.println("Access_token retornou NULL");
+				System.out.println("Access_token retorns NULL");
 			}
 		}
 
