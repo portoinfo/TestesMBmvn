@@ -25,13 +25,63 @@ public class NotificateCrm {
 	final String URL_DEVELOP = "https://crm-api.builderall.io"; 	// develop
 	final String URL_HOMOLOG = "https://crm-api.builderall.info"; 	// homolog 
 	final String URL_PRODUCTION = "https://crm-api.eb4us.com"; 	// production
+	final String client_secret = "Ob8L4chWGQQSNyuLfDDrnf0huhJEiu6LkNJA7X3I";
+	final String grant_type = "client_credentials";
+	final String client_id = "2";
+	final String scope = "*";
+
 	private static String access_token = null, uuid = null;
 	private static JSONObject jsonObj = null; //  httpRequest
-	private static long expires_in = 0;
+	private static long expires_in = 0, expireMillis = 0 ;
 	
-	public JSONObject getToken(String route, Map<String,Object> params, String authorization, String uuid) {
+	public NotificateCrm() {
+		long actualMillis = 0;
+		long diffMillis = 0;
+		if (access_token == null) {
+			Map<String,Object> params = new LinkedHashMap<String, Object>();
+			params.put("grant_type", grant_type);
+		    params.put("client_id", client_id);
+	    	params.put("scope", scope);
+	    	params.put("client_secret", client_secret);
+			jsonObj = getToken();
+			showKeyValueOfResponse(jsonObj);
+			
+		}
+		Calendar c1 = Calendar.getInstance();
+		actualMillis = c1.getTimeInMillis();
+		System.out.println("Data atual: " + c1.getTime() + " - miilis: " + actualMillis);
+		diffMillis = expireMillis - c1.getTimeInMillis();
+		System.out.println("Falta para expirar: " + diffMillis);
+		if (diffMillis < 10000) {
+			access_token = null;
+			System.out.println("Token has expired! Necessary get access_token again!");
+			// get token again
+		}
+	}
+	
+	public JSONObject getToken() {
 
-		jsonObj = postRequest(route, params, authorization, uuid, "token");
+		Map<String,Object> params = new LinkedHashMap<String, Object>();
+		params.put("grant_type", grant_type);
+	    params.put("client_id", client_id);
+    	params.put("scope", scope);
+    	params.put("client_secret", client_secret);
+    	String route = "/oauth/token";
+		jsonObj = postRequest(route, params);
+		showKeyValueOfResponse(jsonObj);
+		if (jsonObj != null) {
+			access_token = null;
+			jsonObj.keySet().forEach(keyStr ->
+			{
+				if (keyStr.equals("access_token")) {
+					access_token = jsonObj.get(keyStr).toString();
+					System.out.println("key: "+ keyStr + " value: " + access_token);
+				} else if (keyStr.equals("expires_in")) {
+					expires_in = Long.parseLong(jsonObj.get(keyStr).toString());
+					System.out.println("key: "+ keyStr + " value: " + expires_in);
+				}
+			});
+		}
 		return jsonObj;
 	}
 	
@@ -50,7 +100,7 @@ public class NotificateCrm {
 		return jsonObj;
 	}
 
-	public JSONObject postRequest(String route, Map<String,Object> params, String authorization, String uuid, String type) {
+	public JSONObject postRequest(String route, Map<String,Object> params) {
 		jsonObj = null;
 		try {
 			URL apiURL = new URL(URL_HOMOLOG + route);
@@ -69,8 +119,6 @@ public class NotificateCrm {
 		    conn.setRequestMethod("POST");
 	    	conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 			conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
-			conn.setRequestProperty("authorization", authorization);
-			conn.setRequestProperty("uuid", uuid);
 			conn.setDoOutput(true);
 			conn.getOutputStream().write(postDataBytes);
 			BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -149,36 +197,12 @@ public class NotificateCrm {
 	public static void main(String[] args) {
 
 		NotificateCrm notif = new NotificateCrm();
-		Map<String,Object> params = new LinkedHashMap<String, Object>();
-		params.put("grant_type", "client_credentials");
-	    params.put("client_id", "2");
-    	params.put("scope", "*");
-    	params.put("client_secret", "Ob8L4chWGQQSNyuLfDDrnf0huhJEiu6LkNJA7X3I");
-		jsonObj = notif.getToken("/oauth/token", params, null, null);
-		notif.showKeyValueOfResponse(jsonObj);
-		if (jsonObj != null) {
-			access_token = null;
-			jsonObj.keySet().forEach(keyStr ->
-			{
-				if (keyStr.equals("access_token")) {
-					access_token = jsonObj.get(keyStr).toString();
-					//System.out.println("key: "+ keyStr + " value: " + access_token);
-				} else if (keyStr.equals("expires_in")) {
-					expires_in = Long.parseLong(jsonObj.get(keyStr).toString());
-				}
-			});
-			expires_in *= 1000;
-			Calendar c = Calendar.getInstance();
-			long actualMillis = c.getTimeInMillis();
-			System.out.println("Data atual: " + c.getTime() + " - miilis: " + actualMillis);
-			long expireMillis = actualMillis + expires_in;
-			Date expireDate = new Date(expireMillis); 
-			System.out.println("Date expiration: " + expireDate);
-			//long diffMillis = expireMillis - actualMillis;
-			//System.out.println("Falta para expirar: " + diffMillis);
+		
+		//jsonObj = notif.getToken();
+		//notif.showKeyValueOfResponse(jsonObj);
+		if (access_token != null) {
 /*			
 			// verifying token expiration time
-			//try{Thread.sleep(15000);}catch(InterruptedException e){System.out.println(e);}    
 			Calendar c1 = Calendar.getInstance();
 			actualMillis = c1.getTimeInMillis();
 			System.out.println("Data atual: " + c1.getTime() + " - miilis: " + actualMillis);
@@ -188,41 +212,40 @@ public class NotificateCrm {
 				// get token again
 			}
 */
-			if (access_token != null) {
-				String uuid = "4d6a0d5b-4e32-4c85-b0a9-ede272040d58";
+			String uuid = "4d6a0d5b-4e32-4c85-b0a9-ede272040d58";
 
-				SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-MM-dd HH:mm:ss" );
-				sdf.setTimeZone( TimeZone.getTimeZone( "UTC" ) );
-				String date = sdf.format( new Date() );
-				//System.out.println("Date UTC formatted: " + date );
+			SimpleDateFormat sdf = new SimpleDateFormat( "yyyy-MM-dd HH:mm:ss" );
+			sdf.setTimeZone( TimeZone.getTimeZone( "UTC" ) );
+			String date = sdf.format( new Date() );
+			//System.out.println("Date UTC formatted: " + date );
 
-				params = new LinkedHashMap<String, Object>();
-	    		params.put("slug", "mailingboss_join_workflow");
-	    		params.put("name", "Test Adelcio");
-	    		params.put("type", "end_user");
-	    		params.put("performed_at", date); 
+			Map<String,Object> params = new LinkedHashMap<String, Object>();
+			params = new LinkedHashMap<String, Object>();
+    		params.put("slug", "mailingboss_join_workflow");
+    		params.put("name", "Test Adelcio");
+    		params.put("type", "end_user");
+    		params.put("performed_at", date); 
 
-				Map<String,Object> paramExtra = new LinkedHashMap<String, Object>();
-				paramExtra.put("id", "12345");
-				paramExtra.put("subject", "Hello World!");
-				params.put("extra", paramExtra);
-				
-				Map<String,Object> paramLead = new LinkedHashMap<String, Object>();
-				paramLead.put("email", "adelcio@mail.com");
-				paramLead.put("lead", "Lead Adelcio");
-				params.put("lead", paramLead);
-			    System.out.println("params: " + params);
+			Map<String,Object> paramExtra = new LinkedHashMap<String, Object>();
+			paramExtra.put("id", "12345");
+			paramExtra.put("subject", "Hello World!");
+			params.put("extra", paramExtra);
+			
+			Map<String,Object> paramLead = new LinkedHashMap<String, Object>();
+			paramLead.put("email", "adelcio@mail.com");
+			paramLead.put("lead", "Lead Adelcio");
+			params.put("lead", paramLead);
+		    System.out.println("params: " + params);
 
-				jsonObj = notif.sendNotificatication("/api/v2/journey/event", params, "Bearer " + access_token, uuid);
-				if (jsonObj != null) {
-					notif.showKeyValueOfResponse(jsonObj);						
-				} else {
-					System.out.println("sendNotificatication() returns NULL");
-				}	
-
+			jsonObj = notif.sendNotificatication("/api/v2/journey/event", params, "Bearer " + access_token, uuid);
+			if (jsonObj != null) {
+				notif.showKeyValueOfResponse(jsonObj);						
 			} else {
-				System.out.println("Access_token returns NULL");
-			}
+				System.out.println("sendNotificatication() returns NULL");
+			}	
+
+		} else {
+			System.out.println("Access_token returns NULL");
 		}
 
 	}
