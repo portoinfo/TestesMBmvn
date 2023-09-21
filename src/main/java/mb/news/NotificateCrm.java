@@ -49,13 +49,17 @@ public class NotificateCrm {
 		}
 		Calendar c1 = Calendar.getInstance();
 		actualMillis = c1.getTimeInMillis();
-		System.out.println("Data atual: " + c1.getTime() + " - miilis: " + actualMillis);
+		System.out.println("Data atual: " + c1.getTime() + " - millis: " + actualMillis);
 		diffMillis = expireMillis - c1.getTimeInMillis();
 		System.out.println("Falta para expirar: " + diffMillis);
 		if (diffMillis < 10000) {
 			access_token = null;
 			System.out.println("Token has expired! Necessary get access_token again!");
-			// get token again
+			jsonObj = getToken();
+			showKeyValueOfResponse(jsonObj);
+			if (access_token == null) {
+				System.out.println("Error trying get access token!");
+			}
 		}
 	}
 	
@@ -79,6 +83,13 @@ public class NotificateCrm {
 				} else if (keyStr.equals("expires_in")) {
 					expires_in = Long.parseLong(jsonObj.get(keyStr).toString());
 					System.out.println("key: "+ keyStr + " value: " + expires_in);
+					expires_in *= 1000;
+					Calendar c = Calendar.getInstance();
+					long actualMillis = c.getTimeInMillis();
+					System.out.println("Data atual: " + c.getTime() + " - millis: " + actualMillis);
+					expireMillis = actualMillis + expires_in;
+					Date expireDate = new Date(expireMillis); 
+					System.out.println("Date expiration: " + expireDate);
 				}
 			});
 		}
